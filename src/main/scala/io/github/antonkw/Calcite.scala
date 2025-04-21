@@ -1,6 +1,5 @@
 package io.github.antonkw
 
-import Fibonacci.{fibonacci, validatedNode}
 import org.apache.calcite.avatica.util.Casing.TO_UPPER
 import org.apache.calcite.avatica.util.Quoting.DOUBLE_QUOTE
 import org.apache.calcite.config.{CalciteConnectionConfig, CalciteConnectionProperty}
@@ -10,13 +9,13 @@ import org.apache.calcite.plan.{RelOptCluster, RelOptTable}
 import org.apache.calcite.prepare.CalciteCatalogReader
 import org.apache.calcite.rel.RelNode
 import org.apache.calcite.rex.RexBuilder
-import org.apache.calcite.sql.{SqlNode, SqlWriterConfig}
 import org.apache.calcite.sql.dialect.SnowflakeSqlDialect
 import org.apache.calcite.sql.fun.SqlStdOperatorTable
-import org.apache.calcite.sql.parser.{SqlAbstractParserImpl, SqlParser}
+import org.apache.calcite.sql.parser.SqlParser
 import org.apache.calcite.sql.pretty.SqlPrettyWriter
 import org.apache.calcite.sql.util.SqlOperatorTables
 import org.apache.calcite.sql.validate.{SqlValidator, SqlValidatorUtil}
+import org.apache.calcite.sql.{SqlNode, SqlWriterConfig}
 import org.apache.calcite.sql2rel.{SqlToRelConverter, StandardConvertletTable}
 
 import java.io.StringReader
@@ -51,7 +50,7 @@ object Calcite {
   }
 
   val validator =  {
-    val allOperators = SqlOperatorTables.chain( SqlStdOperatorTable.instance())
+    val allOperators = SqlOperatorTables.chain(SqlStdOperatorTable.instance())
 
     SqlValidatorUtil.newValidator(
       allOperators,
@@ -82,18 +81,16 @@ object Calcite {
   }
 
   def convertSqlToRel(sqlNode: SqlNode): RelNode = {
-    val noopViewExpander: RelOptTable.ViewExpander = (_, _, _, _) => null
+    val nullVE: RelOptTable.ViewExpander = (_, _, _, _) => null
 
-    val cluster: RelOptCluster = {
-      val planner = new VolcanoPlanner()
-      RelOptCluster.create(planner, new RexBuilder(typeFactory))
-    }
+    val cluster: RelOptCluster =
+      RelOptCluster.create(new VolcanoPlanner(), new RexBuilder(typeFactory))
 
     val sqlToRelConverter =
       new SqlToRelConverter(
-        noopViewExpander, validator, catalogReader, cluster, StandardConvertletTable.INSTANCE, SqlToRelConverter.CONFIG
+        nullVE, validator, catalogReader, cluster, StandardConvertletTable.INSTANCE, SqlToRelConverter.CONFIG
       )
 
-    sqlToRelConverter.convertQuery(validatedNode, false, true).rel
+    sqlToRelConverter.convertQuery(sqlNode, false, true).rel
   }
 }
